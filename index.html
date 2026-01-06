@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Hex Duel V3 - Fixed Centering</title>
+    <title>Hex Duel V4 - Multi-Touch & Pass</title>
     <style>
         :root {
             --bg-color: #1a1a2e;
@@ -73,6 +73,7 @@
             font-size: 0.9rem;
         }
         button:active { transform: scale(0.95); }
+        button.secondary { background: var(--highlight); border: 1px solid var(--text-color); }
 
         #bottom-bar {
             display: flex;
@@ -165,7 +166,7 @@
             display: none;
             pointer-events: auto;
             border: 2px solid var(--text-color);
-            z-index: 100;
+            z-index: 500;
         }
 
         #legend-panel {
@@ -182,7 +183,7 @@
             padding: 15px;
             pointer-events: auto;
             display: none;
-            z-index: 50;
+            z-index: 400;
         }
         .legend-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .legend-title { font-weight: bold; color: var(--text-color); display: flex; align-items: center; gap: 10px; }
@@ -197,6 +198,7 @@
         <div id="top-bar" class="hud-panel">
             <div>Turn: <span id="turn-indicator" style="font-weight:bold; color: #fff;">White</span></div>
             <div style="display:flex; gap:10px;">
+                <button class="secondary" onclick="game.passTurn()">Pass</button>
                 <button onclick="toggleLegend()">Rules</button>
                 <button onclick="game.resetGame()">Restart</button>
             </div>
@@ -314,15 +316,18 @@ class Game {
         this.validMoves = [];
         this.liftTargets = [];
         this.gameOver = false;
+        this.passCount = 0; // Tracks consecutive passes
         
-        this.hands = {
-            white: { [PIECES.SHRIMP]: 3, [PIECES.SHARK]: 2, [PIECES.DOLPHIN]: 2, [PIECES.DUCK]: 2, [PIECES.LOBSTER]: 1, [PIECES.STARFISH]: 1, [PIECES.OCTOPUS]: 1 },
-            black: { [PIECES.SHRIMP]: 3, [PIECES.SHARK]: 2, [PIECES.DOLPHIN]: 2, [PIECES.DUCK]: 2, [PIECES.LOBSTER]: 1, [PIECES.STARFISH]: 1, [PIECES.OCTOPUS]: 1 }
-        };
+        this.hands = { white: {}, black: {} };
 
         this.camera = { x: 0, y: 0, zoom: 1.0 };
         this.lastMouse = { x: 0, y: 0 };
         this.isDragging = false;
+        
+        // Touch state
+        this.touches = {};
+        this.initialPinchDist = null;
+        this.initialZoom = 1.0;
 
         this.setupInputs();
         this.resetGame();
@@ -330,7 +335,6 @@ class Game {
     }
 
     resetGame() {
-        // Clear board and state
         this.board.clear();
         this.turn = 'white';
         this.gameOver = false;
@@ -338,14 +342,26 @@ class Game {
         this.selectedHandPiece = null;
         this.validMoves = [];
         this.liftTargets = [];
+        this.passCount = 0;
 
-        // Center camera and reset zoom
+        // Reset pieces count
+        const startHand = { 
+            [PIECES.SHRIMP]: 3, 
+            [PIECES.SHARK]: 2, 
+            [PIECES.DOLPHIN]: 2, 
+            [PIECES.DUCK]: 2, 
+            [PIECES.LOBSTER]: 1, 
+            [PIECES.STARFISH]: 1, 
+            [PIECES.OCTOPUS]: 1 
+        };
+        this.hands.white = { ...startHand };
+        this.hands.black = { ...startHand };
+
         this.camera = { x: 0, y: 0, zoom: 1.0 };
 
         document.getElementById('message-area').style.display = 'none';
         document.getElementById('stack-inspector').style.display = 'none';
 
-        // Initial Layout
         this.placePiece(new Hex(0, 0), PIECES.ROCK, 'neutral');
         this.placePiece(new Hex(0, -1), PIECES.CRAB, 'white');
         this.placePiece(new Hex(0, 1), PIECES.CRAB, 'black');
@@ -371,7 +387,18 @@ class Game {
 
     getAllOccupiedHexes() { return Array.from(this.board.keys()).map(Hex.fromString); }
 
-    switchTurn() {
+    passTurn() {
+        if (this.gameOver) return;
+        this.passCount++;
+        if (this.passCount >= 2) {
+            this.endGame("Draw by Agreement (Two Passes)");
+        } else {
+            this.switchTurn(true);
+        }
+    }
+
+    switchTurn(isPass = false) {
+        if (!isPass) this.passCount = 0;
         this.turn = this.turn === 'white' ? 'black' : 'white';
         this.selectedHex = null;
         this.selectedHandPiece = null;
@@ -445,7 +472,8 @@ class Game {
         if (!sStack) return false;
         
         const moving = sStack.pop();
-        if (sStack.length === 0) this.board.delete(startKey);
+        const startWasRemoved = (sStack.length === 0);
+        if (startWasRemoved) this.board.delete(startKey);
 
         if (!this.board.has(destKey)) this.board.set(destKey, []);
         this.board.get(destKey).push(moving);
@@ -814,6 +842,10 @@ class Game {
         }
     }
 
+    getDistance(t1, t2) {
+        return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
+    }
+
     setupInputs() {
         window.addEventListener('resize', () => {
             this.canvas.width = window.innerWidth;
@@ -821,10 +853,12 @@ class Game {
             this.updateUI();
         });
         window.dispatchEvent(new Event('resize'));
+
         this.canvas.addEventListener('wheel', e => {
             e.preventDefault();
             this.camera.zoom = Math.min(Math.max(this.camera.zoom - e.deltaY * 0.001, 0.4), 2.5);
         }, {passive:false});
+
         const start = (x, y) => { this.isDragging = false; this.lastMouse = {x, y}; };
         const move = (x, y) => {
             if (Math.abs(x - this.lastMouse.x) > 3 || Math.abs(y - this.lastMouse.y) > 3) this.isDragging = true;
@@ -835,12 +869,35 @@ class Game {
             }
         };
         const end = (x, y) => { if (!this.isDragging) this.handleClick(x, y); };
+
         this.canvas.addEventListener('mousedown', e => start(e.clientX, e.clientY));
         this.canvas.addEventListener('mousemove', e => { if(e.buttons) move(e.clientX, e.clientY); });
         this.canvas.addEventListener('mouseup', e => end(e.clientX, e.clientY));
-        this.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) start(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
-        this.canvas.addEventListener('touchmove', e => { e.preventDefault(); if(e.touches.length===1) move(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
-        this.canvas.addEventListener('touchend', e => { if(e.changedTouches.length===1) end(this.lastMouse.x, this.lastMouse.y); });
+
+        this.canvas.addEventListener('touchstart', e => {
+            if (e.touches.length === 1) {
+                start(e.touches[0].clientX, e.touches[0].clientY);
+            } else if (e.touches.length === 2) {
+                this.initialPinchDist = this.getDistance(e.touches[0], e.touches[1]);
+                this.initialZoom = this.camera.zoom;
+            }
+        }, {passive:false});
+
+        this.canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                move(e.touches[0].clientX, e.touches[0].clientY);
+            } else if (e.touches.length === 2 && this.initialPinchDist !== null) {
+                const currentDist = this.getDistance(e.touches[0], e.touches[1]);
+                const scale = currentDist / this.initialPinchDist;
+                this.camera.zoom = Math.min(Math.max(this.initialZoom * scale, 0.4), 2.5);
+            }
+        }, {passive:false});
+
+        this.canvas.addEventListener('touchend', e => {
+            if (e.touches.length < 2) this.initialPinchDist = null;
+            if (e.changedTouches.length === 1 && e.touches.length === 0) end(this.lastMouse.x, this.lastMouse.y);
+        });
     }
 }
 const game = new Game();
