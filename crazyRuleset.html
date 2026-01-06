@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Aquatic Hive</title>
+    <title>Hex Duel V4 - Smooth Touch</title>
     <style>
         :root {
             --bg-color: #1a1a2e;
@@ -11,9 +11,6 @@
             --text-color: #e94560;
             --highlight: #0f3460;
             --accent: #4cd137;
-            --special: #ffd166;
-            --move: #4cd137;
-            --dest: #00d2d3;
         }
 
         body {
@@ -87,12 +84,6 @@
             z-index: 30;
         }
 
-        #status-msg {
-            font-size: 0.8rem;
-            color: #ccc;
-            margin-left: 10px;
-        }
-
         #hand-container {
             display: flex;
             gap: 8px;
@@ -128,7 +119,6 @@
             user-select: none;
             flex-shrink: 0;
             transition: all 0.2s;
-            position: relative;
         }
 
         .hand-piece.selected {
@@ -206,10 +196,7 @@
     
     <div id="ui-layer">
         <div id="top-bar" class="hud-panel">
-            <div>
-                Turn: <span id="turn-indicator" style="font-weight:bold; color: #fff;">White</span>
-                <span id="status-msg"></span>
-            </div>
+            <div>Turn: <span id="turn-indicator" style="font-weight:bold; color: #fff;">White</span></div>
             <div style="display:flex; gap:10px;">
                 <button class="secondary" onclick="game.passTurn()">Pass</button>
                 <button onclick="toggleLegend()">Rules</button>
@@ -229,17 +216,17 @@
 
         <div id="legend-panel">
             <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <h3 style="margin:0;">Unit Guide (Standard Rules)</h3>
+                <h3 style="margin:0;">Unit Guide</h3>
                 <button onclick="toggleLegend()" style="padding:2px 8px; font-size:12px;">X</button>
             </div>
-            <div class="legend-item"><div class="legend-title"><span>🦀</span> Crab (Queen)</div><div class="legend-desc">Must be placed by Turn 4. Moves 1 space (Slide). You lose if surrounded.</div></div>
-            <div class="legend-item"><div class="legend-title"><span>🦈</span> Shark (Ant)</div><div class="legend-desc">Slides any distance around the outside of the hive.</div></div>
-            <div class="legend-item"><div class="legend-title"><span>🦐</span> Shrimp (Spider)</div><div class="legend-desc">Moves exactly 3 spaces around the edge. Cannot backtrack.</div></div>
-            <div class="legend-item"><div class="legend-title"><span>🐬</span> Dolphin (Grasshopper)</div><div class="legend-desc">Jumps over a line of pieces to the first empty spot.</div></div>
-            <div class="legend-item"><div class="legend-title"><span>⭐</span> Starfish (Beetle)</div><div class="legend-desc">Moves 1 space. Can climb on top of the hive. Immobilizes piece underneath.</div></div>
-            <div class="legend-item"><div class="legend-title"><span>🦆</span> Duck (Ladybug)</div><div class="legend-desc">Moves 3 spaces: 2 on top of the hive, then 1 step down.</div></div>
-            <div class="legend-item"><div class="legend-title"><span>🦞</span> Lobster (Pillbug)</div><div class="legend-desc">Can move 1 space, OR pick up an adjacent single piece and move it to another empty adjacent space.</div></div>
-            <div class="legend-item"><div class="legend-title"><span>🐙</span> Octopus (Mosquito)</div><div class="legend-desc">Takes on the movement ability of any bug it touches. (On top -> acts as Starfish).</div></div>
+            <div class="legend-item"><div class="legend-title"><span>🦀</span> Crab</div><div class="legend-desc">Your King. Moves 1 space. You lose if surrounded.</div></div>
+            <div class="legend-item"><div class="legend-title"><span>🦐</span> Shrimp</div><div class="legend-desc">Slides exactly 3 spaces around the circumference.</div></div>
+            <div class="legend-item"><div class="legend-title"><span>🦈</span> Shark</div><div class="legend-desc">Slides any distance along the edge.</div></div>
+            <div class="legend-item"><div class="legend-title"><span>🐬</span> Dolphin</div><div class="legend-desc">Jumps over pieces to the first empty spot.</div></div>
+            <div class="legend-item"><div class="legend-title"><span>🦆</span> Duck</div><div class="legend-desc">Exactly 3 steps: Up, Across, Down. Land on empty space.</div></div>
+            <div class="legend-item"><div class="legend-title"><span>🦞</span> Lobster</div><div class="legend-desc">Moves 1 space. Can lift neighbors onto itself.</div></div>
+            <div class="legend-item"><div class="legend-title"><span>⭐</span> Starfish</div><div class="legend-desc">Moves 1 space. Can climb on top of stacks.</div></div>
+            <div class="legend-item"><div class="legend-title"><span>🐙</span> Octopus</div><div class="legend-desc">Mimics abilities of adjacent units (excluding Rocks).</div></div>
         </div>
 
         <div id="bottom-bar" class="hud-panel">
@@ -302,7 +289,8 @@ const PIECES = {
     DUCK: 'Duck',
     LOBSTER: 'Lobster',
     STARFISH: 'Starfish',
-    OCTOPUS: 'Octopus'
+    OCTOPUS: 'Octopus',
+    ROCK: 'Rock'
 };
 
 const PIECE_CONFIG = {
@@ -313,7 +301,8 @@ const PIECE_CONFIG = {
     [PIECES.DUCK]: { icon: '🦆', color: '#1dd1a1' },
     [PIECES.LOBSTER]: { icon: '🦞', color: '#e55039' },
     [PIECES.STARFISH]: { icon: '⭐', color: '#feca57' },
-    [PIECES.OCTOPUS]: { icon: '🐙', color: '#c8d6e5' }
+    [PIECES.OCTOPUS]: { icon: '🐙', color: '#c8d6e5' },
+    [PIECES.ROCK]: { icon: '🪨', color: '#636e72' }
 };
 
 class Game {
@@ -322,15 +311,10 @@ class Game {
         this.ctx = this.canvas.getContext('2d');
         this.board = new Map(); 
         this.turn = 'white';
-        this.turnNumber = 1;
         this.selectedHex = null;
         this.selectedHandPiece = null;
-        
-        // Lobster specific state
-        this.pillbugPickedHex = null; // The piece the pillbug is currently holding/moving
-        
         this.validMoves = [];
-        this.specialTargets = [];
+        this.liftTargets = [];
         this.gameOver = false;
         this.passCount = 0;
         
@@ -340,6 +324,8 @@ class Game {
         this.lastMouse = { x: 0, y: 0 };
         this.isDragging = false;
         this.isPinching = false;
+        
+        // Touch tracking
         this.initialPinchDist = null;
         this.initialZoom = 1.0;
 
@@ -351,24 +337,21 @@ class Game {
     resetGame() {
         this.board.clear();
         this.turn = 'white';
-        this.turnNumber = 1;
         this.gameOver = false;
         this.selectedHex = null;
         this.selectedHandPiece = null;
-        this.pillbugPickedHex = null;
         this.validMoves = [];
-        this.specialTargets = [];
+        this.liftTargets = [];
         this.passCount = 0;
 
         const startHand = { 
-            [PIECES.CRAB]: 1,
-            [PIECES.SHRIMP]: 2,
-            [PIECES.SHARK]: 3,
-            [PIECES.DOLPHIN]: 3,
-            [PIECES.STARFISH]: 2,
-            [PIECES.DUCK]: 1,
-            [PIECES.LOBSTER]: 1,
-            [PIECES.OCTOPUS]: 1
+            [PIECES.SHRIMP]: 3, 
+            [PIECES.SHARK]: 2, 
+            [PIECES.DOLPHIN]: 2, 
+            [PIECES.DUCK]: 2, 
+            [PIECES.LOBSTER]: 1, 
+            [PIECES.STARFISH]: 1, 
+            [PIECES.OCTOPUS]: 1 
         };
         this.hands.white = { ...startHand };
         this.hands.black = { ...startHand };
@@ -377,14 +360,25 @@ class Game {
 
         document.getElementById('message-area').style.display = 'none';
         document.getElementById('stack-inspector').style.display = 'none';
+
+        this.placePiece(new Hex(0, 0), PIECES.ROCK, 'neutral');
+        this.placePiece(new Hex(0, -1), PIECES.CRAB, 'white');
+        this.placePiece(new Hex(0, 1), PIECES.CRAB, 'black');
+
         this.updateUI();
+    }
+
+    placePiece(hex, type, color) {
+        const key = hex.toString();
+        if (!this.board.has(key)) this.board.set(key, []);
+        this.board.get(key).push({ type, color });
     }
 
     getTopPiece(hex) {
         const stack = this.board.get(hex.toString());
         return (stack && stack.length > 0) ? stack[stack.length - 1] : null;
     }
-    
+
     getHeight(hex) {
         const stack = this.board.get(hex.toString());
         return stack ? stack.length : 0;
@@ -392,28 +386,23 @@ class Game {
 
     getAllOccupiedHexes() { return Array.from(this.board.keys()).map(Hex.fromString); }
 
-    isQueenPlaced(color) {
-        return this.hands[color][PIECES.CRAB] === 0;
-    }
-
     passTurn() {
         if (this.gameOver) return;
         this.passCount++;
         if (this.passCount >= 2) {
             this.endGame("Draw by Agreement (Two Passes)");
         } else {
-            this.switchTurn();
+            this.switchTurn(true);
         }
     }
 
-    switchTurn() {
+    switchTurn(isPass = false) {
+        if (!isPass) this.passCount = 0;
         this.turn = this.turn === 'white' ? 'black' : 'white';
-        if (this.turn === 'white') this.turnNumber++;
         this.selectedHex = null;
         this.selectedHandPiece = null;
-        this.pillbugPickedHex = null;
         this.validMoves = [];
-        this.specialTargets = [];
+        this.liftTargets = [];
         this.checkWinCondition();
         this.updateUI();
     }
@@ -423,12 +412,11 @@ class Game {
         for (const [key, stack] of this.board) {
             const crab = stack.find(p => p.type === PIECES.CRAB);
             if (crab) {
-                const h = Hex.fromString(key);
-                const neighbors = getNeighbors(h);
+                const neighbors = getNeighbors(Hex.fromString(key));
                 const walled = neighbors.filter(n => this.board.has(n.toString())).length === 6;
                 if (walled) {
                     if (crab.color === 'white') whiteDead = true;
-                    if (crab.color === 'black') blackDead = true;
+                    else blackDead = true;
                 }
             }
         }
@@ -446,16 +434,14 @@ class Game {
     checkOneHive(startHex) {
         const startKey = startHex.toString();
         const stack = this.board.get(startKey);
-        if (!stack) return true;
-        if (stack.length > 1) return true;
+        if (!stack || stack.length > 1) return true; 
 
         const movingPiece = stack.pop();
         if (stack.length === 0) this.board.delete(startKey);
 
-        const occupied = this.getAllOccupiedHexes();
         let connected = true;
-
-        if (occupied.length > 0) {
+        const occupied = this.getAllOccupiedHexes();
+        if (occupied.length > 1) {
             const visited = new Set();
             const queue = [occupied[0]];
             visited.add(occupied[0].toString());
@@ -478,75 +464,111 @@ class Game {
         return connected;
     }
 
-    getPieceMoves(hex) {
-        // CRITICAL FIX: Ensure specialTargets are cleared at the very start
-        // to prevent Lobster abilities leaking to other pieces if this function exits early.
-        this.specialTargets = [];
+    isConnectedAfterMove(startHex, destHex) {
+        const startKey = startHex.toString();
+        const destKey = destHex.toString();
+        const sStack = this.board.get(startKey);
+        if (!sStack) return false;
+        
+        const moving = sStack.pop();
+        const startWasRemoved = (sStack.length === 0);
+        if (startWasRemoved) this.board.delete(startKey);
 
-        if (!this.isQueenPlaced(this.turn)) return [];
+        if (!this.board.has(destKey)) this.board.set(destKey, []);
+        this.board.get(destKey).push(moving);
+
+        const occupied = this.getAllOccupiedHexes();
+        let connected = true;
+        if (occupied.length > 1) {
+            const visited = new Set();
+            const queue = [occupied[0]];
+            visited.add(occupied[0].toString());
+            let count = 0;
+            while (queue.length) {
+                const c = queue.shift();
+                count++;
+                getNeighbors(c).forEach(n => {
+                    if (this.board.has(n.toString()) && !visited.has(n.toString())) {
+                        visited.add(n.toString());
+                        queue.push(n);
+                    }
+                });
+            }
+            if (count !== occupied.length) connected = false;
+        }
+
+        this.board.get(destKey).pop();
+        if (this.board.get(destKey).length === 0) this.board.delete(destKey);
+        if (!this.board.has(startKey)) this.board.set(startKey, []);
+        this.board.get(startKey).push(moving);
+
+        return connected;
+    }
+
+    getPieceMoves(hex) {
         const top = this.getTopPiece(hex);
         if (!top || top.color !== this.turn) return [];
         if (!this.checkOneHive(hex)) return [];
 
         let moves = [];
-        let type = top.type;
-        let abilities = [type];
+        let abilities = [top.type];
 
-        if (type === PIECES.OCTOPUS) {
-            const height = this.getHeight(hex);
-            if (height > 1) {
-                abilities = [PIECES.STARFISH];
-            } else {
-                abilities = [];
-                getNeighbors(hex).forEach(n => {
-                    const np = this.getTopPiece(n);
-                    if (np) abilities.push(np.type);
-                });
-                abilities = abilities.filter(t => t !== PIECES.OCTOPUS);
-                abilities = [...new Set(abilities)];
-            }
+        if (top.type === PIECES.OCTOPUS) {
+            abilities = [];
+            getNeighbors(hex).forEach(n => {
+                const np = this.getTopPiece(n);
+                if (np && np.type !== PIECES.OCTOPUS && np.type !== PIECES.ROCK) abilities.push(np.type);
+            });
+            abilities = [...new Set(abilities)];
         }
 
-        abilities.forEach(t => {
-            switch (t) {
-                case PIECES.CRAB: moves.push(...this.getSlideMoves(hex, 1)); break;
-                case PIECES.SHARK: moves.push(...this.getSlideMoves(hex, 999)); break;
-                case PIECES.SHRIMP: moves.push(...this.getSpiderMoves(hex)); break;
-                case PIECES.DOLPHIN: moves.push(...this.getGrasshopperMoves(hex)); break;
-                case PIECES.STARFISH: moves.push(...this.getBeetleMoves(hex)); break;
-                case PIECES.DUCK: moves.push(...this.getLadybugMoves(hex)); break;
-                case PIECES.LOBSTER: 
-                    moves.push(...this.getSlideMoves(hex, 1)); 
-                    this.getPillbugPotentialPieces(hex); 
-                    break;
+        this.liftTargets = [];
+
+        abilities.forEach(type => {
+            if (type === PIECES.CRAB || type === PIECES.LOBSTER) moves.push(...this.getSlideMoves(hex, 1));
+            if (type === PIECES.SHRIMP) moves.push(...this.getShrimpMoves(hex));
+            if (type === PIECES.SHARK) moves.push(...this.getSlideMoves(hex, 99));
+            if (type === PIECES.DOLPHIN) moves.push(...this.getJumpMoves(hex));
+            if (type === PIECES.STARFISH) {
+                moves.push(...this.getSlideMoves(hex, 1));
+                moves.push(...this.getClimbMoves(hex));
+            }
+            if (type === PIECES.DUCK) moves.push(...this.getDuckMoves(hex));
+
+            if (type === PIECES.LOBSTER) {
+                getNeighbors(hex).forEach(n => {
+                    if (this.board.has(n.toString()) && this.checkOneHive(n)) this.liftTargets.push(n);
+                });
             }
         });
 
         const seen = new Set();
-        return moves.filter(m => {
-            const s = m.toString();
-            return seen.has(s) ? false : seen.add(s);
-        });
+        return moves.filter(m => !seen.has(m.toString()) && seen.add(m.toString()));
     }
 
-    getSlideMoves(startHex, maxDist) {
+    getSlideMoves(hex, range) {
         const moves = [];
-        const visited = new Set([startHex.toString()]);
-        const queue = [{ hex: startHex, dist: 0 }];
+        const queue = [{h: hex, dist: 0}];
+        const visited = new Set([hex.toString()]);
+        let head = 0;
 
-        while (queue.length > 0) {
-            const { hex, dist } = queue.shift();
-            if (dist >= maxDist) continue;
+        while(head < queue.length) {
+            const {h, dist} = queue[head++];
+            if (dist >= range) continue;
 
-            getNeighbors(hex).forEach(n => {
-                const key = n.toString();
-                if (!this.board.has(key) && !visited.has(key)) {
-                    const common = getNeighbors(hex).filter(ng => getNeighbors(n).some(nn => nn.equals(ng)));
-                    const occCommon = common.filter(c => this.board.has(c.toString())).length;
-                    if (occCommon > 0 && occCommon < 2) {
-                        visited.add(key);
+            getNeighbors(h).forEach(n => {
+                if (this.board.has(n.toString())) return;
+                const n_neigh = getNeighbors(n);
+                const hasSupport = n_neigh.some(nn => !nn.equals(h) && this.board.has(nn.toString()));
+                if (!hasSupport) return;
+
+                const common = getNeighbors(h).filter(hn => n_neigh.some(nn => nn.equals(hn)));
+                const blocked = common.filter(c => this.board.has(c.toString())).length;
+                if (blocked < 2 && !visited.has(n.toString())) {
+                    if (this.isConnectedAfterMove(hex, n)) {
+                        visited.add(n.toString());
                         moves.push(n);
-                        queue.push({ hex: n, dist: dist + 1 });
+                        queue.push({h: n, dist: dist + 1});
                     }
                 }
             });
@@ -554,141 +576,90 @@ class Game {
         return moves;
     }
 
-    getSpiderMoves(startHex) {
-        const validEnds = [];
-        const search = (curr, path) => {
-            if (path.length === 4) {
-                validEnds.push(curr);
-                return;
-            }
-            getNeighbors(curr).forEach(n => {
-                const key = n.toString();
-                if (this.board.has(key)) return;
-                if (path.some(p => p.equals(n))) return;
-                
-                // CRITICAL FIX: When sliding, the Spider cannot use its starting position ('startHex')
-                // as a sliding wall because it has theoretically left that spot.
-                // We calculate common neighbors between 'curr' (where we are) and 'n' (where we want to go).
-                const common = getNeighbors(curr).filter(ng => getNeighbors(n).some(nn => nn.equals(ng)));
-                
-                // Count occupied common neighbors, BUT exclude startHex from being a supporting piece.
-                const occCommon = common.filter(c => this.board.has(c.toString()) && !c.equals(startHex)).length;
-                
-                // Must slide along something else (occCommon > 0) AND not be blocked (occCommon < 2)
-                if (occCommon > 0 && occCommon < 2) search(n, [...path, n]);
-            });
-        }
-        search(startHex, [startHex]);
-        return validEnds;
-    }
-
-    getGrasshopperMoves(hex) {
-        const moves = [];
-        DIRECTIONS.forEach(d => {
-            let curr = hex.add(d);
-            if (this.board.has(curr.toString())) {
-                while(this.board.has(curr.toString())) curr = curr.add(d);
-                moves.push(curr);
-            }
-        });
-        return moves;
-    }
-
-    getBeetleMoves(hex) {
-        const moves = [];
-        getNeighbors(hex).forEach(n => {
-            const heightDest = this.getHeight(n);
-            const heightSrc = this.getHeight(hex);
-            if (heightSrc === 1 && heightDest === 0) {
-                const common = getNeighbors(hex).filter(ng => getNeighbors(n).some(nn => nn.equals(ng)));
-                const occCommon = common.filter(c => this.getHeight(c) > 0).length;
-                if (occCommon < 2 && occCommon > 0) moves.push(n);
-            } else {
-                moves.push(n);
-            }
-        });
-        return moves;
-    }
-
-    getLadybugMoves(startHex) {
-        const validEnds = [];
-        const search = (curr, depth, path) => {
+    getShrimpMoves(startHex) {
+        const validEnds = new Set();
+        const isOccupied = (h) => this.board.has(h.toString());
+        const findPath = (curr, depth, path) => {
             if (depth === 3) {
-                if (!this.board.has(curr.toString())) validEnds.push(curr);
+                if (!curr.equals(startHex) && this.isConnectedAfterMove(startHex, curr)) validEnds.add(curr.toString());
                 return;
             }
-            getNeighbors(curr).forEach(n => {
-                const key = n.toString();
-                if (depth < 2) {
-                    if (this.board.has(key) && !path.some(p => p.equals(n))) search(n, depth + 1, [...path, n]);
-                } else {
-                    if (!this.board.has(key) && !path.some(p => p.equals(n))) search(n, depth + 1, [...path, n]);
+            getNeighbors(curr).forEach(next => {
+                if (isOccupied(next.toString()) || path.some(p => p.equals(next))) return;
+                const common = getNeighbors(curr).filter(cn => getNeighbors(next).some(nn => nn.equals(cn)));
+                if (common.filter(c => isOccupied(c.toString())).length >= 2) return;
+                const nextN = getNeighbors(next);
+                if (!nextN.some(nn => isOccupied(nn.toString()))) return;
+                const shared = nextN.filter(nn => isOccupied(nn.toString()) && getNeighbors(curr).some(cn => cn.equals(nn)));
+                if (shared.length === 0) return;
+                findPath(next, depth + 1, [...path, next]);
+            });
+        };
+        findPath(startHex, 0, [startHex]);
+        return Array.from(validEnds).map(s => Hex.fromString(s));
+    }
+
+    getDuckMoves(startHex) {
+        const validEnds = [];
+        const isOccupied = (h) => this.board.has(h.toString());
+        const solve = (curr, depth, path) => {
+            if (depth === 3) {
+                if (!isOccupied(curr.toString()) && this.isConnectedAfterMove(startHex, curr)) validEnds.push(curr);
+                return;
+            }
+            getNeighbors(curr).forEach(next => {
+                const nextOcc = isOccupied(next.toString());
+                if (path.some(p => p.equals(next))) return;
+                if (depth === 0 || depth === 1) {
+                    if (nextOcc) solve(next, depth + 1, [...path, next]);
+                } else if (depth === 2) {
+                    if (!nextOcc) {
+                        const common = getNeighbors(curr).filter(cn => getNeighbors(next).some(nn => nn.equals(cn)));
+                        const hCurr = this.getHeight(curr);
+                        const blocked = common.filter(c => this.getHeight(c) > hCurr).length;
+                        if (blocked < 2) solve(next, 3, [...path, next]);
+                    }
                 }
             });
         };
-        search(startHex, 0, [startHex]);
-        return validEnds;
+        solve(startHex, 0, [startHex]);
+        const seen = new Set();
+        return validEnds.filter(h => !seen.has(h.toString()) && seen.add(h.toString()));
     }
 
-    // Phase 1: Identify pieces adjacent to lobster that can be picked up
-    getPillbugPotentialPieces(hex) {
+    getClimbMoves(hex) {
+        const moves = [];
         getNeighbors(hex).forEach(n => {
-            if (this.board.has(n.toString())) {
-                const stack = this.board.get(n.toString());
-                if (stack.length === 1) { // Only single pieces can be picked up
-                    // Check if picking up this piece would break the hive
-                    if (this.checkOneHive(n)) {
-                        this.specialTargets.push(n);
-                    }
-                }
-            }
+            if (this.board.has(n.toString()) && this.isConnectedAfterMove(hex, n)) moves.push(n);
         });
+        return moves;
     }
 
-    // Phase 2: Identify where a picked-up piece can go
-    getPillbugDestinations(pillbugHex, pieceToMoveHex) {
-        const destinations = [];
-        getNeighbors(pillbugHex).forEach(dest => {
-            // Destination must be empty and NOT where the piece currently is
-            if (!this.board.has(dest.toString()) && !dest.equals(pieceToMoveHex)) {
-                destinations.push(dest);
-            }
+    getJumpMoves(hex) {
+        const moves = [];
+        DIRECTIONS.forEach(d => {
+            let curr = hex.add(d);
+            if (!this.board.has(curr.toString())) return;
+            while(this.board.has(curr.toString())) curr = curr.add(d);
+            if (this.isConnectedAfterMove(hex, curr)) moves.push(curr);
         });
-        return destinations;
+        return moves;
     }
 
     getValidPlacements() {
-        if (this.gameOver) return [];
-        const queenInHand = this.hands[this.turn][PIECES.CRAB] > 0;
-        let piecesOnBoard = 0;
-        for (const [k, stack] of this.board) {
-            stack.forEach(p => { if (p.color === this.turn) piecesOnBoard++; });
-        }
         const valid = [];
-        
-        if (this.board.size === 0) {
-            valid.push(new Hex(0, 0));
-        } else if (this.board.size === 1) {
-            const center = Hex.fromString(Array.from(this.board.keys())[0]);
-            valid.push(...getNeighbors(center));
-        } else {
-            const candidates = new Set();
-            const enemyAdj = new Set();
-            for (const [key, stack] of this.board) {
-                const h = Hex.fromString(key);
-                const top = stack[stack.length-1];
-                getNeighbors(h).forEach(n => {
-                    const nKey = n.toString();
-                    if (!this.board.has(nKey)) {
-                        if (top.color === this.turn) candidates.add(nKey);
-                        else enemyAdj.add(nKey);
-                    }
-                });
-            }
-            candidates.forEach(k => {
-                if (!enemyAdj.has(k)) valid.push(Hex.fromString(k));
+        const occupied = this.getAllOccupiedHexes();
+        const emptyAdj = new Set();
+        occupied.forEach(h => getNeighbors(h).forEach(n => { if(!this.board.has(n.toString())) emptyAdj.add(n.toString()); }));
+        emptyAdj.forEach(key => {
+            const h = Hex.fromString(key);
+            let badTouch = false;
+            getNeighbors(h).forEach(n => {
+                const s = this.getTopPiece(n);
+                if (s && s.color !== this.turn && s.color !== 'neutral') badTouch = true;
             });
-        }
+            if (!badTouch) valid.push(h);
+        });
         return valid;
     }
 
@@ -717,61 +688,31 @@ class Game {
             inspector.style.display = 'none';
         }
 
-        // LOBSTER LOGIC - Phase 2 Selection (Clicking a destination for the piece being moved)
-        if (this.pillbugPickedHex) {
-            const destMatch = this.validMoves.find(m => m.equals(hex));
-            if (destMatch) {
-                this.executePillbugMove(this.pillbugPickedHex, destMatch);
-                return;
-            }
-            // If they click something else, cancel lobster action
-            this.pillbugPickedHex = null;
-            this.selectedHex = null;
-            this.validMoves = [];
-            this.updateUI();
-            return;
-        }
-
-        // LOBSTER LOGIC - Phase 1 Selection (Clicking a piece to pick up)
-        const specialMatch = this.specialTargets.find(t => t.equals(hex));
-        if (specialMatch && this.selectedHex) {
-            this.pillbugPickedHex = specialMatch;
-            this.validMoves = this.getPillbugDestinations(this.selectedHex, specialMatch);
-            this.specialTargets = []; // Clear other potential pickups
-            this.updateUI();
-            return;
-        }
-
-        // NORMAL MOVEMENT LOGIC
         const moveMatch = this.validMoves.find(m => m.equals(hex));
+        const liftMatch = this.liftTargets.find(m => m.equals(hex));
+
         if (moveMatch) {
             if (this.selectedHandPiece) this.placeFromHand(moveMatch);
             else if (this.selectedHex) this.moveOnBoard(moveMatch);
             return;
         }
 
-        const top = this.getTopPiece(hex);
-        if (top && top.color === this.turn) {
-            let piecesOnBoard = 0;
-            for (const [k, stack] of this.board) {
-                stack.forEach(p => { if (p.color === this.turn) piecesOnBoard++; });
-            }
-            if (piecesOnBoard === 3 && this.hands[this.turn][PIECES.CRAB] > 0) return;
+        if (liftMatch && this.selectedHex) {
+            this.executeLift(this.selectedHex, liftMatch);
+            return;
+        }
 
-            // CRITICAL FIX: Clear specialTargets when a new piece is selected.
-            // This prevents a previous selection (Lobster) from leaking its ability targets to the new selection.
-            this.specialTargets = [];
+        const top = this.getTopPiece(hex);
+        if (this.board.has(key) && top && top.color === this.turn) {
             this.selectedHandPiece = null;
             this.selectedHex = hex;
-            this.pillbugPickedHex = null;
             this.validMoves = this.getPieceMoves(hex);
             this.updateUI();
         } else {
             this.selectedHex = null;
             this.selectedHandPiece = null;
-            this.pillbugPickedHex = null;
             this.validMoves = [];
-            this.specialTargets = [];
+            this.liftTargets = [];
             this.updateUI();
         }
     }
@@ -782,48 +723,26 @@ class Game {
         this.switchTurn();
     }
 
-    placePiece(hex, type, color) {
-        const key = hex.toString();
-        if (!this.board.has(key)) this.board.set(key, []);
-        this.board.get(key).push({ type, color });
-    }
-
     moveOnBoard(target) {
-        const key = this.selectedHex.toString();
-        const stack = this.board.get(key);
+        const stack = this.board.get(this.selectedHex.toString());
         const piece = stack.pop();
-        if (stack.length === 0) this.board.delete(key);
-        const destKey = target.toString();
-        if (!this.board.has(destKey)) this.board.set(destKey, []);
-        this.board.get(destKey).push(piece);
+        if (stack.length === 0) this.board.delete(this.selectedHex.toString());
+        this.placePiece(target, piece.type, piece.color);
         this.switchTurn();
     }
 
-    executePillbugMove(fromHex, toHex) {
-        const fKey = fromHex.toString();
-        const stack = this.board.get(fKey);
-        const piece = stack.pop();
-        if (stack.length === 0) this.board.delete(fKey);
-        const tKey = toHex.toString();
-        if (!this.board.has(tKey)) this.board.set(tKey, []);
-        this.board.get(tKey).push(piece);
+    executeLift(lobsterHex, sourceHex) {
+        const sStack = this.board.get(sourceHex.toString());
+        const lifted = sStack.pop();
+        if (sStack.length === 0) this.board.delete(sourceHex.toString());
+        this.board.get(lobsterHex.toString()).push(lifted);
         this.switchTurn();
     }
 
     selectHandPiece(type) {
         if (this.gameOver) return;
-        let piecesOnBoard = 0;
-        for (const [k, stack] of this.board) {
-            stack.forEach(p => { if (p.color === this.turn) piecesOnBoard++; });
-        }
-        if (piecesOnBoard === 3 && this.hands[this.turn][PIECES.CRAB] > 0 && type !== PIECES.CRAB) {
-            document.getElementById('status-msg').innerText = "Must place Crab!";
-            return;
-        }
         this.selectedHandPiece = type;
         this.selectedHex = null;
-        this.pillbugPickedHex = null;
-        this.specialTargets = [];
         this.validMoves = this.getValidPlacements();
         this.updateUI();
     }
@@ -842,29 +761,9 @@ class Game {
             stack.forEach((p, i) => this.drawHex(h, p, i));
         }
 
-        // 1. Draw Lobster Potential Pickups (Yellow)
-        this.specialTargets.forEach(t => {
-            this.drawHighlight(t, '#ffd166', this.getHeight(t));
-        });
-
-        // 2. Draw Movement Valid Destinations (Green/Cyan)
-        this.validMoves.forEach(m => {
-            const h = this.board.has(m.toString()) ? this.getHeight(m) : 0;
-            // Use cyan for pillbug destinations, green for normal
-            const color = this.pillbugPickedHex ? '#00d2d3' : '#4cd137';
-            this.drawHighlight(m, color, h);
-        });
-
-        // 3. Draw Selected Piece Highlight (Red)
-        if (this.selectedHex) {
-            const h = this.getHeight(this.selectedHex);
-            this.drawHighlight(this.selectedHex, '#e94560', h);
-        }
-
-        // 4. Draw Pillbug Currently Moving Highlight (Cyan Ring)
-        if (this.pillbugPickedHex) {
-            this.drawHighlight(this.pillbugPickedHex, '#00d2d3', this.getHeight(this.pillbugPickedHex));
-        }
+        if (this.selectedHex) this.drawHighlight(this.selectedHex, '#e94560');
+        this.validMoves.forEach(m => this.drawHighlight(m, '#4cd137'));
+        this.liftTargets.forEach(m => this.drawHighlight(m, '#ffd166'));
 
         this.ctx.restore();
         requestAnimationFrame(() => this.loop());
@@ -872,8 +771,7 @@ class Game {
 
     drawHex(hex, piece, height) {
         const {x, y} = hexToPixel(hex);
-        const offsetY = height * -5; 
-        
+        const offsetY = height * -8;
         this.ctx.beginPath();
         for (let i = 0; i < 6; i++) {
             const rad = Math.PI / 180 * (60 * i);
@@ -882,29 +780,27 @@ class Game {
             if (i===0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
         }
         this.ctx.closePath();
-        
-        this.ctx.fillStyle = piece.color === 'white' ? '#f5f6fa' : '#2d3436';
+        this.ctx.fillStyle = piece.color === 'white' ? '#e0e0e0' : (piece.color === 'black' ? '#2d3436' : '#636e72');
         this.ctx.fill();
         this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = '#000';
+        this.ctx.strokeStyle = '#111';
         this.ctx.stroke();
-        
         this.ctx.fillStyle = PIECE_CONFIG[piece.type].color;
-        this.ctx.font = '24px Arial';
+        this.ctx.font = '22px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(PIECE_CONFIG[piece.type].icon, x, y + offsetY + 2);
+        this.ctx.fillText(PIECE_CONFIG[piece.type].icon, x, y + offsetY);
     }
 
-    drawHighlight(hex, color, height = 0) {
+    drawHighlight(hex, color) {
+        const h = this.getHeight(hex) - (this.board.has(hex.toString()) ? 1 : 0);
         const {x, y} = hexToPixel(hex);
-        const offsetY = height * -5;
-
+        const offsetY = h * -8;
         this.ctx.beginPath();
         for (let i = 0; i < 6; i++) {
             const rad = Math.PI / 180 * (60 * i);
-            const px = x + (HEX_SIZE - 5) * Math.cos(rad);
-            const py = y + offsetY + (HEX_SIZE - 5) * Math.sin(rad);
+            const px = x + (HEX_SIZE - 4) * Math.cos(rad);
+            const py = y + offsetY + (HEX_SIZE - 4) * Math.sin(rad);
             if (i===0) this.ctx.moveTo(px, py); else this.ctx.lineTo(px, py);
         }
         this.ctx.closePath();
@@ -915,15 +811,6 @@ class Game {
 
     updateUI() {
         document.getElementById('turn-indicator').innerText = this.turn.toUpperCase();
-        
-        let status = "";
-        if (this.pillbugPickedHex) {
-            status = "Select destination for picked up piece";
-        } else if (this.selectedHex && this.getTopPiece(this.selectedHex).type === PIECES.LOBSTER) {
-            status = "Select move OR yellow piece to pick up";
-        }
-        document.getElementById('status-msg').innerText = status;
-
         const container = document.getElementById('hand-container');
         container.innerHTML = '';
         for (const [type, count] of Object.entries(this.hands[this.turn])) {
@@ -937,8 +824,13 @@ class Game {
         }
     }
 
-    getDistance(t1, t2) { return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2)); }
-    getMidpoint(t1, t2) { return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 }; }
+    getDistance(t1, t2) {
+        return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
+    }
+
+    getMidpoint(t1, t2) {
+        return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+    }
 
     setupInputs() {
         window.addEventListener('resize', () => {
@@ -948,21 +840,33 @@ class Game {
         });
         window.dispatchEvent(new Event('resize'));
 
+        // Mouse Wheel (Desktop)
         this.canvas.addEventListener('wheel', e => {
             e.preventDefault();
-            const mouseX = e.clientX, mouseY = e.clientY;
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
             const worldX = (mouseX - this.canvas.width/2) / this.camera.zoom + this.camera.x;
             const worldY = (mouseY - this.canvas.height/2) / this.camera.zoom + this.camera.y;
+
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
             this.camera.zoom = Math.min(Math.max(this.camera.zoom * zoomFactor, 0.4), 2.5);
+
             this.camera.x = worldX - (mouseX - this.canvas.width/2) / this.camera.zoom;
             this.camera.y = worldY - (mouseY - this.canvas.height/2) / this.camera.zoom;
         }, {passive:false});
 
-        const startPanning = (x, y) => { this.isDragging = false; this.lastMouse = {x, y}; };
+        // Event logic
+        const startPanning = (x, y) => { 
+            this.isDragging = false; 
+            this.lastMouse = {x, y}; 
+        };
+
         const updatePanning = (x, y) => {
-            const dx = Math.abs(x - this.lastMouse.x), dy = Math.abs(y - this.lastMouse.y);
+            const dx = Math.abs(x - this.lastMouse.x);
+            const dy = Math.abs(y - this.lastMouse.y);
             if (dx > 3 || dy > 3) this.isDragging = true;
+            
             if (this.isDragging) {
                 this.camera.x -= (x - this.lastMouse.x) / this.camera.zoom;
                 this.camera.y -= (y - this.lastMouse.y) / this.camera.zoom;
@@ -970,13 +874,17 @@ class Game {
             }
         };
 
+        // Desktop Events
         this.canvas.addEventListener('mousedown', e => startPanning(e.clientX, e.clientY));
         this.canvas.addEventListener('mousemove', e => { if(e.buttons === 1) updatePanning(e.clientX, e.clientY); });
         this.canvas.addEventListener('mouseup', e => { if (!this.isDragging) this.handleClick(e.clientX, e.clientY); });
 
+        // Touch Events (Mobile)
         this.canvas.addEventListener('touchstart', e => {
-            if (e.touches.length === 1) { this.isPinching = false; startPanning(e.touches[0].clientX, e.touches[0].clientY); }
-            else if (e.touches.length === 2) {
+            if (e.touches.length === 1) {
+                this.isPinching = false;
+                startPanning(e.touches[0].clientX, e.touches[0].clientY);
+            } else if (e.touches.length === 2) {
                 this.isPinching = true;
                 this.initialPinchDist = this.getDistance(e.touches[0], e.touches[1]);
                 this.initialZoom = this.camera.zoom;
@@ -985,14 +893,20 @@ class Game {
 
         this.canvas.addEventListener('touchmove', e => {
             e.preventDefault();
-            if (e.touches.length === 1 && !this.isPinching) updatePanning(e.touches[0].clientX, e.touches[0].clientY);
-            else if (e.touches.length === 2) {
+            if (e.touches.length === 1 && !this.isPinching) {
+                updatePanning(e.touches[0].clientX, e.touches[0].clientY);
+            } else if (e.touches.length === 2) {
                 const currentDist = this.getDistance(e.touches[0], e.touches[1]);
                 const mid = this.getMidpoint(e.touches[0], e.touches[1]);
+                
+                // Track world position before zoom
                 const worldX = (mid.x - this.canvas.width/2) / this.camera.zoom + this.camera.x;
                 const worldY = (mid.y - this.canvas.height/2) / this.camera.zoom + this.camera.y;
+
                 const scale = currentDist / this.initialPinchDist;
                 this.camera.zoom = Math.min(Math.max(this.initialZoom * scale, 0.4), 2.5);
+
+                // Adjust camera so midpoint stays stationary
                 this.camera.x = worldX - (mid.x - this.canvas.width/2) / this.camera.zoom;
                 this.camera.y = worldY - (mid.y - this.canvas.height/2) / this.camera.zoom;
             }
@@ -1004,8 +918,10 @@ class Game {
                     const touch = e.changedTouches[0];
                     this.handleClick(touch.clientX, touch.clientY);
                 }
-                this.isPinching = false; this.isDragging = false;
+                this.isPinching = false;
+                this.isDragging = false;
             } else if (e.touches.length === 1) {
+                // When dropping from 2 to 1 finger, reset pan anchor to prevent jumping
                 this.lastMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
             }
         }, {passive:false});
