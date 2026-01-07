@@ -1,2 +1,2 @@
 # hiveGameRipoff
-Ai vibe coded hive game rip off
+A vibe coded hive game rip off
